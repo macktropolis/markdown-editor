@@ -13,6 +13,8 @@ export interface EditorConfig {
   contentRootAbs: string;
   defaultExtension: 'mdx' | 'md';
   frontmatterFields: FrontmatterField[];
+  /** URL template for the live rendered page, e.g. "/blog/{slug}". Null when unset. */
+  previewUrl: string | null;
   componentDirs: { id: string; label: string; path: string }[];
 }
 
@@ -30,6 +32,10 @@ export interface Doc {
   extension: string;
   raw: string;
   updatedAt: string;
+  /** Path of the file within the content root, e.g. 'my-post.mdx' or 'my-post/index.mdx'. */
+  relativePath: string;
+  /** Prefix images need inside this document, e.g. './' or './my-post/'. */
+  assetPrefix: string;
   assets: string[];
 }
 

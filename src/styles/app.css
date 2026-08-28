@@ -142,6 +142,36 @@ kbd {
 }
 .badge-warn { background: rgba(224, 175, 104, 0.18); color: var(--warn); }
 
+.seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.seg button {
+  padding: 5px 11px; background: var(--surface-2); border: 0; cursor: pointer;
+  color: var(--text-muted); font-size: 12px;
+}
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button.is-active { background: var(--accent-soft); color: var(--text); }
+
+/* ---------- format bar ---------- */
+
+.format-bar {
+  display: flex; align-items: center; gap: 3px; flex-wrap: wrap;
+  padding: 6px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.fmt {
+  min-width: 28px; padding: 3px 8px;
+  background: transparent; border: 1px solid transparent; border-radius: 5px;
+  color: var(--text-muted); cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.6;
+}
+.fmt:hover { background: var(--surface-2); border-color: var(--border); color: var(--text); }
+.fmt-component { border-color: var(--accent); color: var(--accent); }
+.fmt-component:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.format-sep { width: 1px; height: 16px; background: var(--border); margin: 0 5px; }
+
+.preview-rendered { display: flex; }
+.preview-rendered iframe { flex: 1; width: 100%; height: 100%; border: 0; background: #fff; }
+
 /* ---------- frontmatter ---------- */
 
 .frontmatter { border-bottom: 1px solid var(--border); background: var(--surface); }

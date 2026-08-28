@@ -7,17 +7,41 @@ import { assetUrl } from '../lib/api';
 interface Props {
   body: string;
   slug: string;
+  mode: 'draft' | 'rendered';
+  previewUrl: string | null;
+  /** Bumped on each save so the live page reloads with the new content. */
+  reloadKey: number;
 }
 
 /** Rewrite relative image paths to the asset endpoint so local images render. */
 function resolveSrc(src: string | undefined, slug: string): string | undefined {
   if (!src) return src;
   if (/^(https?:|data:|\/)/.test(src)) return src;
-  return assetUrl(slug, src.replace(/^\.\//, ''));
+  // A document's images all live in one directory, so the final segment identifies them
+  // whichever prefix the layout requires.
+  return assetUrl(slug, src.split('/').pop() ?? src);
 }
 
-export function PreviewPane({ body, slug }: Props) {
+export function PreviewPane({ body, slug, mode, previewUrl, reloadKey }: Props) {
   const segments = useMemo(() => parseSegments(body), [body]);
+
+  if (mode === 'rendered') {
+    const src = previewUrl ? previewUrl.replace('{slug}', encodeURIComponent(slug)) : null;
+    return (
+      <div className="preview-pane preview-rendered">
+        {src ? (
+          // Keyed on the save counter so each save remounts the frame and refetches.
+          <iframe key={reloadKey} src={src} title="Rendered page" />
+        ) : (
+          <div className="prose">
+            <p className="empty-hint">
+              No rendered URL is configured. Set <code>previewUrl</code> to show the live page here.
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="preview-pane">

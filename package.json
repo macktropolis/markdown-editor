@@ -1,9 +1,11 @@
 {
-  "name": "markdown-editor",
+  "name": "astro-content-editor",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -29,5 +31,20 @@
     "@vitejs/plugin-react": "^5.0.4",
     "typescript": "^5.9.3",
     "vite": "^7.1.9"
+  },
+  "description": "A dev-only MDX content editor mounted into an Astro site",
+  "exports": {
+    ".": "./integration/index.js"
+  },
+  "files": [
+    "integration",
+    "server",
+    "dist/editor",
+    "fixtures",
+    "README.md",
+    "CLAUDE.md"
+  ],
+  "peerDependencies": {
+    "astro": ">=5"
   }
 }

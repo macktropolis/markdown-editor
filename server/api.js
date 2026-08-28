@@ -41,7 +41,7 @@ async function readBody(req) {
 }
 
 async function route(req, res, url) {
-  const segments = url.pathname.split('/').filter(Boolean).slice(1); // drop "api"
+  const segments = url.pathname.split('/').filter(Boolean);
   const [resource, slug, action, assetName] = segments;
   const method = req.method ?? 'GET';
 
@@ -52,6 +52,7 @@ async function route(req, res, url) {
       contentRootAbs: config.contentRootAbs,
       defaultExtension: config.defaultExtension,
       frontmatterFields: config.frontmatterFields,
+      previewUrl: config.previewUrl ?? null,
       componentDirs: config.componentDirs.map(({ id, label, path: p }) => ({ id, label, path: p })),
     });
   }
@@ -88,10 +89,14 @@ async function route(req, res, url) {
   throw new HttpError(404, `No route for ${method} ${url.pathname}`);
 }
 
-/** Node middleware handling every /api/* request. Returns false when the path is not ours. */
-export async function apiMiddleware(req, res) {
+/**
+ * Node middleware handling every `<prefix>/*` request. Returns false when the path is
+ * not ours, so a host server can fall through to its own routes.
+ */
+export async function apiMiddleware(req, res, prefix = '/api') {
   const url = new URL(req.url ?? '/', 'http://localhost');
-  if (!url.pathname.startsWith('/api/')) return false;
+  if (!url.pathname.startsWith(`${prefix}/`)) return false;
+  url.pathname = url.pathname.slice(prefix.length);
 
   try {
     await route(req, res, url);

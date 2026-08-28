@@ -1,7 +1,13 @@
 import type { ComponentGroup, Doc, DocSummary, EditorConfig } from './types';
 
+/**
+ * Where the editor is mounted. The standalone dev server serves it at the root; the
+ * Astro integration mounts it under its configured route and injects this global.
+ */
+const BASE: string = (globalThis as { __EDITOR_BASE__?: string }).__EDITOR_BASE__ ?? '';
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(`${BASE}${path}`, {
     ...init,
     headers: init?.body ? { 'content-type': 'application/json', ...init.headers } : init?.headers,
   });
@@ -30,4 +36,4 @@ export const api = {
 };
 
 export const assetUrl = (slug: string, filename: string) =>
-  `/api/docs/${encodeURIComponent(slug)}/assets/${encodeURIComponent(filename)}`;
+  `${BASE}/api/docs/${encodeURIComponent(slug)}/assets/${encodeURIComponent(filename)}`;

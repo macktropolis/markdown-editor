@@ -1,7 +1,14 @@
-# markdown-editor
+# astro-content-editor
 
-A local writing tool for authoring `.mdx` / `.md` blog posts. See `README.md` for usage;
-this file records the decisions and constraints that the code alone does not explain.
+A content editor that mounts into `astro dev`, plus a standalone harness for developing
+it. See `README.md` for usage; this file records the decisions the code does not explain.
+
+## Shape
+
+The deliverable is an **Astro integration** (`integration/index.js`), installed per site.
+It is not a standalone app you point at several projects: components belong to a site, so
+an editor that scanned many sites would offer tags that cannot resolve in the document
+being written. `npm run dev` still runs a standalone harness for working on the UI itself.
 
 ## Run it
 
@@ -11,6 +18,12 @@ npm install && npm run dev   # http://localhost:4321
 
 One process: Vite serves the UI, and `server/api.js` is mounted into its dev server as
 middleware. `npm start` builds and serves the same handler from `server/index.js`.
+
+**Not every collection is file-backed.** Astro collections can use custom loaders. The
+RetroCult site loads `articles` from a Google Sheet and pre-renders the HTML in the
+loader, so its `src/content/articles/*.mdx` files are inert and its editor is
+clipboard-to-spreadsheet by necessity. Check `content.config.ts` for a `glob` loader
+before assuming that saving a file changes what a page shows.
 
 ## Decisions already made — do not re-litigate
 

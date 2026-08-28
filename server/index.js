@@ -6,7 +6,7 @@ import { apiMiddleware } from './api.js';
 import { projectRoot } from './config.js';
 
 const PORT = Number(process.env.PORT ?? 4321);
-const distDir = path.join(projectRoot, 'dist');
+const distDir = path.join(projectRoot, 'dist', 'editor');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',

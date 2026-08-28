@@ -17,6 +17,8 @@ function editorApi(): Plugin {
 }
 
 export default defineConfig({
+  base: './',
+  build: { outDir: 'dist/editor', emptyOutDir: true },
   plugins: [react(), editorApi()],
   server: { port: 4321, strictPort: false },
 });

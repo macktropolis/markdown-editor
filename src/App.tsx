@@ -15,6 +15,7 @@ import { EditorPane, type EditorHandle } from './components/EditorPane';
 import { FrontmatterForm } from './components/FrontmatterForm';
 import { PreviewPane } from './components/PreviewPane';
 import { Sidebar } from './components/Sidebar';
+import { Toolbar } from './components/Toolbar';
 
 const AUTOSAVE_DELAY = 1200;
 
@@ -40,8 +41,12 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const [previewMode, setPreviewMode] = useState<'draft' | 'rendered'>('draft');
+  const [savedAt, setSavedAt] = useState(0);
 
   const editorRef = useRef<EditorHandle>(null);
+  const docRef = useRef<Doc | null>(null);
+  docRef.current = doc;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef({ frontmatterText: '', body: '', slug: '' });
   latest.current = { frontmatterText, body, slug: doc?.slug ?? '' };
@@ -80,6 +85,7 @@ export function App() {
       const saved = await api.saveDoc(slug, joinDocument(fm, text), doc?.extension ?? 'mdx');
       setDoc((current) => (current && current.slug === slug ? { ...current, ...saved } : current));
       setSaveState('saved');
+      setSavedAt((n) => n + 1);
       refreshDocs();
     } catch (e) {
       setSaveState('error');
@@ -164,7 +170,8 @@ export function App() {
         try {
           const { filename } = await api.uploadAsset(slug, file.name, file.type, await fileToBase64(file));
           const alt = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
-          editorRef.current?.insert(`![${alt}](${filename})`);
+          const prefix = docRef.current?.assetPrefix ?? './';
+          editorRef.current?.insert(`![${alt}](${prefix}${filename})`);
           setDoc(await api.readDoc(slug));
           markDirty();
         } catch (e) {
@@ -180,7 +187,7 @@ export function App() {
       const prop = component.props.find(isImageProp);
       if (!prop || !asset) return componentSnippet(component);
       const body = latest.current.body;
-      const path = `./${asset}`;
+      const path = `${docRef.current?.assetPrefix ?? './'}${asset}`;
       // Reuse the binding if this image is already imported, rather than importing it twice.
       const identifier = existingImportIdentifier(body, path) ?? imageIdentifier(asset, collectIdentifiers(body));
       return componentSnippet(component, { prop: prop.name, identifier, path });
@@ -241,13 +248,29 @@ export function App() {
             <div className="toolbar">
               <div className="toolbar-title">
                 <strong>{doc.slug}</strong>
-                <span className="muted">/index.{doc.extension}</span>
+                <span className="muted">{(doc.relativePath ?? `.${doc.extension}`).replace(doc.slug, '')}</span>
               </div>
               <div className="toolbar-actions">
                 <span className={`status status-${saveState}`}>{statusLabel[saveState]}</span>
-                <button type="button" className="btn" onClick={() => setPaletteOpen(true)}>
-                  Insert component <kbd>⌘K</kbd>
-                </button>
+                {showPreview && (
+                  <div className="seg">
+                    <button
+                      type="button"
+                      className={previewMode === 'draft' ? 'is-active' : ''}
+                      onClick={() => setPreviewMode('draft')}
+                    >
+                      Draft
+                    </button>
+                    <button
+                      type="button"
+                      className={previewMode === 'rendered' ? 'is-active' : ''}
+                      onClick={() => setPreviewMode('rendered')}
+                      title={config?.previewUrl ?? 'No rendered URL configured'}
+                    >
+                      Rendered
+                    </button>
+                  </div>
+                )}
                 <button type="button" className="btn" onClick={() => setShowPreview((v) => !v)}>
                   {showPreview ? 'Hide preview' : 'Show preview'}
                 </button>
@@ -261,9 +284,19 @@ export function App() {
               assets={doc.assets}
             />
 
+            <Toolbar editor={editorRef} onChanged={markDirty} onOpenPalette={() => setPaletteOpen(true)} />
+
             <div className={`split ${showPreview ? '' : 'single'}`}>
               <EditorPane ref={editorRef} value={body} onChange={changeBody} onFiles={uploadFiles} />
-              {showPreview && <PreviewPane body={body} slug={doc.slug} />}
+              {showPreview && (
+                <PreviewPane
+                  body={body}
+                  slug={doc.slug}
+                  mode={previewMode}
+                  previewUrl={config?.previewUrl ?? null}
+                  reloadKey={savedAt}
+                />
+              )}
             </div>
           </>
         ) : (

@@ -6,6 +6,10 @@ import { EditorView } from '@codemirror/view';
 
 export interface EditorHandle {
   insert: (text: string, imports?: string[]) => void;
+  /** Wrap the selection in markers, or drop them at the cursor ready to type between. */
+  wrap: (before: string, after?: string) => void;
+  /** Add or remove a line-start marker on every line the selection touches. */
+  prefixLines: (prefix: string) => void;
   focus: () => void;
 }
 
@@ -47,6 +51,47 @@ export const EditorPane = forwardRef<EditorHandle, Props>(function EditorPane({ 
 
   useImperativeHandle(ref, () => ({
     focus: () => cm.current?.view?.focus(),
+
+    wrap(before, after = before) {
+      const view = cm.current?.view;
+      if (!view) return;
+      const { from, to } = view.state.selection.main;
+      const selected = view.state.doc.sliceString(from, to);
+
+      // Wrapping an already-wrapped selection removes the markers instead.
+      const already = selected.startsWith(before) && selected.endsWith(after) && selected.length >= before.length + after.length;
+      const insert = already ? selected.slice(before.length, selected.length - after.length) : `${before}${selected}${after}`;
+      const anchor = already ? from : from + before.length;
+
+      view.dispatch({
+        changes: { from, to, insert },
+        selection: { anchor, head: anchor + (already ? insert.length : selected.length) },
+        scrollIntoView: true,
+      });
+      view.focus();
+    },
+
+    prefixLines(prefix) {
+      const view = cm.current?.view;
+      if (!view) return;
+      const { from, to } = view.state.selection.main;
+      const first = view.state.doc.lineAt(from);
+      const last = view.state.doc.lineAt(to);
+
+      const lines = [];
+      for (let n = first.number; n <= last.number; n += 1) lines.push(view.state.doc.line(n));
+
+      // If every touched line already carries the marker, toggle it off.
+      const stripped = lines.every((line) => line.text.startsWith(prefix));
+      const changes = lines.map((line) => ({
+        from: line.from,
+        to: line.from + (stripped ? prefix.length : 0),
+        insert: stripped ? '' : prefix,
+      }));
+
+      view.dispatch({ changes, scrollIntoView: true });
+      view.focus();
+    },
     insert(text, imports = []) {
       const view = cm.current?.view;
       if (!view) return;

@@ -1,4 +1,4 @@
-# Markdown Editor
+# astro-content-editor
 
 A local writing tool for `.mdx` / `.md` blog posts. Split-pane source + preview,
 frontmatter as a form, an image drop zone, and a component palette that reads the
@@ -7,7 +7,65 @@ real `Props` interfaces out of your Astro projects.
 Documents are plain files on disk. Nothing is stored in a database, and nothing
 leaves your machine.
 
-## Running it
+## Installing into an Astro site
+
+The editor mounts into `astro dev` as an integration. It reads that site's own content
+directory and components, so the components it offers are always ones the document can
+actually use.
+
+```js
+// astro.config.mjs
+import contentEditor from 'astro-content-editor';
+
+export default defineConfig({
+  integrations: [
+    mdx(),
+    contentEditor({ collection: 'essays', previewUrl: '/essays/{slug}' }),
+  ],
+});
+```
+
+Run `astro dev` and open `/editor`.
+
+**Dev only, by design.** The integration returns early unless the command is `dev`, so
+the file-writing API cannot exist in a built site.
+
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `collection` | — | Content collection to edit. Sets the content directory and preview URL. |
+| `route` | `/editor` | Where the editor mounts. |
+| `contentDir` | `content/<collection>` | Override, relative to `srcDir`. |
+| `previewUrl` | `/<collection>/{slug}` | Live page URL for the Rendered tab. |
+| `componentDirs` | `[{ label: 'Components', path: 'components' }]` | Directories to scan. |
+| `frontmatterFields` | title, description, pubDate, tags, draft | Fields the form shows. |
+| `defaultExtension` | `mdx` | Extension for new documents. |
+
+Changing the editor's own server code requires restarting `astro dev` — Node caches the
+package's modules, and Astro's hot reload does not cover them.
+
+### Document layouts
+
+Both shapes are supported, detected from what is already in the directory:
+
+- **flat** — `essays/my-post.mdx`, which is what Astro's `glob` loader expects. Images
+  go in `essays/my-post/` and are referenced as `./my-post/cover.png`.
+- **folder** — `essays/my-post/index.mdx` with images beside it, referenced as
+  `./cover.png`.
+
+An empty directory falls back to flat under the integration, folder standalone.
+
+### Rendered preview
+
+The Rendered tab iframes the live page from the same dev server. Saving writes the file,
+Astro hot-reloads, and the frame reloads — so you see the real components, real styles,
+and real layout, not an approximation. Astro build errors show up there too.
+
+This only works where the collection is file-backed. A collection with a custom loader
+(pulling from a sheet or an API) does not read your files, so saving one will not change
+what the page shows.
+
+## Running it standalone
+
 
 ```bash
 npm install && npm run dev

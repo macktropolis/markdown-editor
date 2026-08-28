@@ -51,12 +51,34 @@ function parseFrontmatter(raw) {
   }
 }
 
-async function docFileFor(dirAbs) {
-  for (const ext of DOC_EXTENSIONS) {
-    const file = path.join(dirAbs, `index.${ext}`);
+/**
+ * Two directory shapes are supported.
+ *
+ *  folder — `<root>/<slug>/index.mdx`, images alongside. Keeps assets with the post.
+ *  flat   — `<root>/<slug>.mdx`, the convention Astro's glob loader expects. Images
+ *           still live in `<root>/<slug>/`, which the `**\/*.{md,mdx}` pattern ignores.
+ *
+ * Both put assets in the same place, so only the document path differs.
+ */
+function docFileCandidates(config, slug) {
+  return DOC_EXTENSIONS.map((ext) => ({
+    ext,
+    file:
+      config.layout === 'flat'
+        ? path.join(config.contentRootAbs, `${slug}.${ext}`)
+        : path.join(config.contentRootAbs, slug, `index.${ext}`),
+  }));
+}
+
+function assetDirFor(config, slug) {
+  return path.join(config.contentRootAbs, slug);
+}
+
+async function docFileFor(config, slug) {
+  for (const candidate of docFileCandidates(config, slug)) {
     try {
-      await stat(file);
-      return { file, extension: ext };
+      await stat(candidate.file);
+      return { file: candidate.file, extension: candidate.ext };
     } catch {
       /* try next extension */
     }
@@ -64,9 +86,41 @@ async function docFileFor(dirAbs) {
   return null;
 }
 
+/** Pick the shape from what is already on disk, falling back to the configured default. */
+async function detectLayout(rootAbs, fallback) {
+  let entries;
+  try {
+    entries = await readdir(rootAbs, { withFileTypes: true });
+  } catch {
+    return fallback;
+  }
+
+  const flatDocs = entries.some(
+    (entry) => entry.isFile() && DOC_EXTENSIONS.some((ext) => entry.name.endsWith(`.${ext}`)),
+  );
+  if (flatDocs) return 'flat';
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    for (const ext of DOC_EXTENSIONS) {
+      try {
+        await stat(path.join(rootAbs, entry.name, `index.${ext}`));
+        return 'folder';
+      } catch {
+        /* keep looking */
+      }
+    }
+  }
+
+  return fallback;
+}
+
 async function ensureContentRoot() {
   const config = await loadConfig();
   await mkdir(config.contentRootAbs, { recursive: true });
+  if (config.layout !== 'flat' && config.layout !== 'folder') {
+    config.layout = await detectLayout(config.contentRootAbs, config.layoutFallback ?? 'folder');
+  }
   return config;
 }
 
@@ -76,16 +130,27 @@ export async function listDocs() {
   const docs = [];
 
   for (const entry of entries) {
-    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
-    const dirAbs = path.join(config.contentRootAbs, entry.name);
-    const found = await docFileFor(dirAbs);
+    if (entry.name.startsWith('.')) continue;
+
+    let slug;
+    if (config.layout === 'flat') {
+      if (!entry.isFile()) continue;
+      const ext = DOC_EXTENSIONS.find((candidate) => entry.name.endsWith(`.${candidate}`));
+      if (!ext) continue;
+      slug = entry.name.slice(0, -(ext.length + 1));
+    } else {
+      if (!entry.isDirectory()) continue;
+      slug = entry.name;
+    }
+
+    const found = await docFileFor(config, slug);
     if (!found) continue;
     const [raw, stats] = await Promise.all([readFile(found.file, 'utf8'), stat(found.file)]);
     const data = parseFrontmatter(raw);
     docs.push({
-      slug: entry.name,
+      slug,
       extension: found.extension,
-      title: typeof data.title === 'string' && data.title.trim() ? data.title : entry.name,
+      title: typeof data.title === 'string' && data.title.trim() ? data.title : slug,
       description: typeof data.description === 'string' ? data.description : '',
       draft: data.draft === true,
       updatedAt: stats.mtime.toISOString(),
@@ -99,19 +164,22 @@ export async function listDocs() {
 export async function readDoc(slug) {
   assertSlug(slug);
   const config = await ensureContentRoot();
-  const dirAbs = path.join(config.contentRootAbs, slug);
-  const found = await docFileFor(dirAbs);
+  const found = await docFileFor(config, slug);
   if (!found) throw new HttpError(404, `No document named "${slug}"`);
   const [raw, stats, files] = await Promise.all([
     readFile(found.file, 'utf8'),
     stat(found.file),
-    readdir(dirAbs).catch(() => []),
+    readdir(assetDirFor(config, slug)).catch(() => []),
   ]);
   return {
     slug,
     extension: found.extension,
     raw,
     updatedAt: stats.mtime.toISOString(),
+    relativePath: path.relative(config.contentRootAbs, found.file),
+    // How images must be referenced from inside this document, which differs by layout:
+    // a folder document sits with its images, a flat one sits beside their directory.
+    assetPrefix: config.layout === 'flat' ? `./${slug}/` : './',
     assets: files.filter((name) => !name.startsWith('index.') && !name.startsWith('.')),
   };
 }
@@ -123,12 +191,8 @@ export async function createDoc({ title, slug, extension }) {
 
   let name = base;
   for (let i = 2; ; i += 1) {
-    try {
-      await stat(path.join(config.contentRootAbs, name));
-      name = `${base}-${i}`;
-    } catch {
-      break;
-    }
+    if (!(await docFileFor(config, name)) && !(await exists(path.join(config.contentRootAbs, name)))) break;
+    name = `${base}-${i}`;
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -143,9 +207,9 @@ export async function createDoc({ title, slug, extension }) {
     '',
   ].join('\n');
 
-  const dirAbs = path.join(config.contentRootAbs, name);
-  await mkdir(dirAbs, { recursive: true });
-  await writeFile(path.join(dirAbs, `index.${ext}`), frontmatter, 'utf8');
+  const target = docFileCandidates({ ...config, layout: config.layout }, name).find((c) => c.ext === ext).file;
+  await mkdir(path.dirname(target), { recursive: true });
+  await writeFile(target, frontmatter, 'utf8');
   return readDoc(name);
 }
 
@@ -153,13 +217,12 @@ export async function saveDoc(slug, { raw, extension }) {
   assertSlug(slug);
   if (typeof raw !== 'string') throw new HttpError(400, 'Missing document body');
   const config = await ensureContentRoot();
-  const dirAbs = path.join(config.contentRootAbs, slug);
-  await mkdir(dirAbs, { recursive: true });
 
-  const existing = await docFileFor(dirAbs);
+  const existing = await docFileFor(config, slug);
   const ext = DOC_EXTENSIONS.includes(extension) ? extension : existing?.extension ?? config.defaultExtension;
-  const target = path.join(dirAbs, `index.${ext}`);
+  const target = docFileCandidates(config, slug).find((c) => c.ext === ext).file;
 
+  await mkdir(path.dirname(target), { recursive: true });
   await writeFile(target, raw, 'utf8');
   // Changing the extension leaves the old file behind; remove it so the doc stays single-file.
   if (existing && existing.file !== target) await rm(existing.file, { force: true });
@@ -171,14 +234,23 @@ export async function renameDoc(slug, nextSlug) {
   const target = assertSlug(slugify(nextSlug));
   if (slug === target) return readDoc(slug);
   const config = await ensureContentRoot();
-  const toAbs = path.join(config.contentRootAbs, target);
-  try {
-    await stat(toAbs);
+  if (await docFileFor(config, target)) {
     throw new HttpError(409, `A document named "${target}" already exists`);
-  } catch (err) {
-    if (err instanceof HttpError) throw err;
   }
-  await rename(path.join(config.contentRootAbs, slug), toAbs);
+
+  const found = await docFileFor(config, slug);
+  if (!found) throw new HttpError(404, `No document named "${slug}"`);
+
+  if (config.layout === 'flat') {
+    await rename(found.file, path.join(config.contentRootAbs, `${target}.${found.extension}`));
+    // Images live in a sibling folder named for the slug; move it too when present.
+    if (await exists(assetDirFor(config, slug))) {
+      await rename(assetDirFor(config, slug), assetDirFor(config, target));
+    }
+  } else {
+    await rename(path.join(config.contentRootAbs, slug), path.join(config.contentRootAbs, target));
+  }
+
   return readDoc(target);
 }
 
@@ -189,8 +261,32 @@ export async function trashDoc(slug) {
   const trashAbs = path.join(config.contentRootAbs, TRASH_DIR);
   await mkdir(trashAbs, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  await rename(path.join(config.contentRootAbs, slug), path.join(trashAbs, `${slug}--${stamp}`));
+  const destination = path.join(trashAbs, `${slug}--${stamp}`);
+  await mkdir(destination, { recursive: true });
+
+  const found = await docFileFor(config, slug);
+  if (!found) throw new HttpError(404, `No document named "${slug}"`);
+
+  if (config.layout === 'flat') {
+    await rename(found.file, path.join(destination, path.basename(found.file)));
+    if (await exists(assetDirFor(config, slug))) {
+      await rename(assetDirFor(config, slug), path.join(destination, slug));
+    }
+  } else {
+    await rm(destination, { recursive: true, force: true });
+    await rename(path.join(config.contentRootAbs, slug), destination);
+  }
+
   return { slug, trashedTo: path.join(TRASH_DIR, `${slug}--${stamp}`) };
+}
+
+async function exists(target) {
+  try {
+    await stat(target);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const IMAGE_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/svg+xml': 'svg', 'image/avif': 'avif' };
@@ -199,7 +295,7 @@ export async function saveAsset(slug, { filename, mimeType, dataBase64 }) {
   assertSlug(slug);
   if (typeof dataBase64 !== 'string' || !dataBase64) throw new HttpError(400, 'Missing image data');
   const config = await ensureContentRoot();
-  const dirAbs = path.join(config.contentRootAbs, slug);
+  const dirAbs = assetDirFor(config, slug);
   await mkdir(dirAbs, { recursive: true });
 
   const parsed = path.parse(filename || 'image');
@@ -224,5 +320,5 @@ export async function readAsset(slug, filename) {
   assertSlug(slug);
   if (path.basename(filename) !== filename) throw new HttpError(400, 'Invalid asset name');
   const config = await ensureContentRoot();
-  return readFile(path.join(config.contentRootAbs, slug, filename));
+  return readFile(path.join(assetDirFor(config, slug), filename));
 }
