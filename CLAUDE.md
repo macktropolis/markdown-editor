@@ -56,8 +56,8 @@ how host sites consume this today; npm also runs it before packing, so a publish
 tarball ships the built bundle. Replacing it with `prepublishOnly` would silently break
 every git-installed host.
 
-The package is publish-ready apart from a licence — it has no `license` field and no
-`LICENSE` file, so npm publishes it as unlicensed and nobody can legally use it.
+MIT licensed, matching the starter template it ships with. npm includes `LICENSE` in the
+tarball automatically, so it does not need a `files` entry.
 
 ## Host sites
 

@@ -33,6 +33,7 @@
     "vite": "^7.1.9"
   },
   "description": "A dev-only MDX content editor mounted into an Astro site",
+  "license": "MIT",
   "exports": {
     ".": "./integration/index.js"
   },
