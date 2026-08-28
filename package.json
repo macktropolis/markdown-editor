@@ -1,6 +1,5 @@
 {
   "name": "astro-content-editor",
-  "private": true,
   "version": "0.1.0",
   "type": "module",
   "engines": {
@@ -15,21 +14,21 @@
     "prepare": "vite build"
   },
   "dependencies": {
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
     "@codemirror/lang-markdown": "^6.3.4",
     "@codemirror/language-data": "^6.5.1",
     "@codemirror/state": "^6.5.2",
     "@codemirror/view": "^6.38.6",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.1",
     "@uiw/react-codemirror": "^4.25.4",
+    "@vitejs/plugin-react": "^5.0.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "yaml": "^2.8.1"
-  },
-  "devDependencies": {
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.1",
-    "@vitejs/plugin-react": "^5.0.4",
     "typescript": "^5.9.3",
     "vite": "^7.1.9"
   },
@@ -41,11 +40,13 @@
     "integration",
     "server",
     "dist/editor",
-    "fixtures",
-    "README.md",
-    "CLAUDE.md"
+    "README.md"
   ],
   "peerDependencies": {
     "astro": ">=5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/macktropolis/markdown-editor.git"
   }
 }
