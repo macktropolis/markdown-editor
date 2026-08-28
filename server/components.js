@@ -1,4 +1,4 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { loadConfig } from './config.js';
 
@@ -166,6 +166,26 @@ export async function listComponents() {
   const groups = [];
 
   for (const dir of config.componentDirs) {
+    // A configured directory that does not exist is reported rather than silently
+    // yielding zero components — the usual cause is a checkout on another machine
+    // where this relative path points nowhere.
+    let exists = true;
+    let problem;
+    try {
+      if (!(await stat(dir.pathAbs)).isDirectory()) {
+        exists = false;
+        problem = 'Not a directory';
+      }
+    } catch (err) {
+      exists = false;
+      problem = err.code === 'ENOENT' ? 'Directory not found' : err.message;
+    }
+
+    if (!exists) {
+      groups.push({ id: dir.id, label: dir.label, path: dir.path, pathAbs: dir.pathAbs, exists, problem, found: 0, components: [] });
+      continue;
+    }
+
     const files = [];
     await walk(dir.pathAbs, dir.pathAbs, files);
     files.sort((a, b) => a.relative.localeCompare(b.relative));
@@ -196,7 +216,15 @@ export async function listComponents() {
       });
     }
 
-    groups.push({ id: dir.id, label: dir.label, path: dir.path, found: components.length, components });
+    groups.push({
+      id: dir.id,
+      label: dir.label,
+      path: dir.path,
+      pathAbs: dir.pathAbs,
+      exists: true,
+      found: components.length,
+      components,
+    });
   }
 
   return groups;

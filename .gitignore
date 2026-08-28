@@ -2,3 +2,4 @@ node_modules/
 dist/
 content/.trash/
 .DS_Store
+editor.config.local.json

@@ -47,6 +47,18 @@ permanently, so recovering a mistake is a `mv`.
 | `componentDirs` | Directories scanned for components. Each is `{ "label", "path" }`, relative to this project. |
 | `frontmatterFields` | The fields the frontmatter form shows, in order. |
 
+Paths are relative to this project, which means `componentDirs` entries pointing at
+sibling repositories only resolve on the machine those siblings live on. For a clone
+elsewhere, create `editor.config.local.json` — it is git-ignored and its top-level keys
+override the shared config:
+
+```json
+{ "componentDirs": [{ "label": "Local", "path": "./some/components" }] }
+```
+
+A configured directory that cannot be read is named in the palette, so an empty
+component list is never left unexplained.
+
 Frontmatter field types: `string`, `text`, `date`, `list`, `boolean`, `number`, `image`.
 Any key present in a document but absent from this list still appears in the form,
 with its type inferred — so pointing the editor at a blog with a different schema

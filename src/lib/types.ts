@@ -58,6 +58,9 @@ export interface ComponentGroup {
   id: string;
   label: string;
   path: string;
+  pathAbs: string;
+  exists: boolean;
+  problem?: string;
   found: number;
   components: ComponentInfo[];
 }

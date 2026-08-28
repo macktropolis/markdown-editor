@@ -32,6 +32,7 @@ export function ComponentPalette({ groups, assets, buildSnippet, onInsert, onClo
     );
   }, [groups, query]);
 
+  const unavailable = useMemo(() => groups.filter((group) => !group.exists), [groups]);
   const active: ComponentInfo | undefined = matches[Math.min(selected, matches.length - 1)];
   const needsImage = active ? imageProp(active) : undefined;
   const chosenAsset = needsImage ? (asset ?? assets[0] ?? null) : null;
@@ -106,7 +107,9 @@ export function ComponentPalette({ groups, assets, buildSnippet, onInsert, onClo
                 </button>
               </li>
             ))}
-            {!matches.length && <li className="palette-empty">No components match.</li>}
+            {!matches.length && (
+              <li className="palette-empty">{query.trim() ? 'No components match.' : 'No components available.'}</li>
+            )}
           </ul>
 
           {active && (
@@ -169,6 +172,25 @@ export function ComponentPalette({ groups, assets, buildSnippet, onInsert, onClo
             </div>
           )}
         </div>
+
+        {unavailable.length > 0 && (
+          <div className="palette-problem">
+            <strong>
+              {unavailable.length === 1 ? 'A component directory is' : `${unavailable.length} component directories are`} unreachable
+            </strong>
+            <ul>
+              {unavailable.map((group) => (
+                <li key={group.id}>
+                  <code>{group.path}</code> — {group.problem ?? 'unavailable'}
+                </li>
+              ))}
+            </ul>
+            <p>
+              Paths in <code>editor.config.json</code> are relative to the project. On a machine where they differ,
+              override <code>componentDirs</code> in <code>editor.config.local.json</code>.
+            </p>
+          </div>
+        )}
 
         <footer className="palette-footer">
           <span>↑↓ navigate · ⏎ insert · esc close</span>
