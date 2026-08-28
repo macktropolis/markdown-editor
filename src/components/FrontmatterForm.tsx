@@ -20,7 +20,13 @@ function inferType(value: unknown): FrontmatterFieldType {
   if (typeof value === 'boolean') return 'boolean';
   if (typeof value === 'number') return 'number';
   if (Array.isArray(value)) return 'list';
+  if (value instanceof Date) return 'date';
+  if (value && typeof value === 'object') return 'object';
   return 'string';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date);
 }
 
 export function FrontmatterForm({ text, onChange, fields, assets }: Props) {
@@ -35,6 +41,22 @@ export function FrontmatterForm({ text, onChange, fields, assets }: Props) {
 
   const update = (key: string, value: unknown) => {
     onChange(stringifyFrontmatter({ ...data, [key]: value }));
+  };
+
+  /** Replace one key inside an object-valued field, leaving its siblings alone. */
+  const updateNested = (key: string, subKey: string, value: unknown) => {
+    const current = isRecord(data[key]) ? data[key] : {};
+    update(key, { ...current, [subKey]: value });
+  };
+
+  const counter = (field: FrontmatterField, value: unknown) => {
+    if (!field.maxLength) return null;
+    const length = String(value ?? '').length;
+    return (
+      <span className={`counter ${length > field.maxLength ? 'is-over' : ''}`}>
+        {length} / {field.maxLength}
+      </span>
+    );
   };
 
   const renderField = (field: FrontmatterField) => {
@@ -53,7 +75,10 @@ export function FrontmatterForm({ text, onChange, fields, assets }: Props) {
       case 'text':
         return (
           <div key={field.key} className="fm-field fm-wide">
-            <label htmlFor={id}>{label}</label>
+            <label htmlFor={id}>
+              {label}
+              {counter(field, value)}
+            </label>
             <textarea id={id} rows={2} value={String(value ?? '')} onChange={(e) => update(field.key, e.target.value)} />
           </div>
         );
@@ -61,7 +86,16 @@ export function FrontmatterForm({ text, onChange, fields, assets }: Props) {
         return (
           <div key={field.key} className="fm-field">
             <label htmlFor={id}>{label}</label>
-            <input id={id} type="date" value={toDateInput(value)} onChange={(e) => update(field.key, e.target.value)} />
+            <input
+              id={id}
+              type="date"
+              value={toDateInput(value)}
+              // Stored as a Date so YAML emits a timestamp. A quoted string fails
+              // schemas that use z.date() rather than z.coerce.date().
+              onChange={(e) =>
+                update(field.key, e.target.value ? new Date(`${e.target.value}T00:00:00Z`) : undefined)
+              }
+            />
           </div>
         );
       case 'list':
@@ -96,10 +130,43 @@ export function FrontmatterForm({ text, onChange, fields, assets }: Props) {
             <input id={id} list="fm-assets" value={String(value ?? '')} onChange={(e) => update(field.key, e.target.value)} />
           </div>
         );
+      case 'object': {
+        const record = isRecord(value) ? value : {};
+        // Declared sub-fields win; otherwise take the keys the document already has.
+        const subFields: FrontmatterField[] =
+          field.fields ?? Object.keys(record).map((k) => ({ key: k, label: k, type: inferType(record[k]) }));
+
+        return (
+          <fieldset key={field.key} className="fm-field fm-wide fm-object">
+            <legend>{label}</legend>
+            {subFields.length ? (
+              subFields.map((sub) => (
+                <div key={sub.key} className="fm-sub">
+                  <label htmlFor={`${id}-${sub.key}`}>
+                    {sub.label ?? sub.key}
+                    {counter(sub, record[sub.key])}
+                  </label>
+                  <input
+                    id={`${id}-${sub.key}`}
+                    value={String(record[sub.key] ?? '')}
+                    list={sub.type === 'image' ? 'fm-assets' : undefined}
+                    onChange={(e) => updateNested(field.key, sub.key, e.target.value)}
+                  />
+                </div>
+              ))
+            ) : (
+              <p className="muted">Empty — edit as raw YAML to add keys.</p>
+            )}
+          </fieldset>
+        );
+      }
       default:
         return (
           <div key={field.key} className="fm-field">
-            <label htmlFor={id}>{label}</label>
+            <label htmlFor={id}>
+              {label}
+              {counter(field, value)}
+            </label>
             <input id={id} value={String(value ?? '')} onChange={(e) => update(field.key, e.target.value)} />
           </div>
         );

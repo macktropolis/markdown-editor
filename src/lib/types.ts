@@ -1,4 +1,12 @@
-export type FrontmatterFieldType = 'string' | 'text' | 'date' | 'list' | 'boolean' | 'number' | 'image';
+export type FrontmatterFieldType =
+  | 'string'
+  | 'text'
+  | 'date'
+  | 'list'
+  | 'boolean'
+  | 'number'
+  | 'image'
+  | 'object';
 
 export interface FrontmatterField {
   key: string;
@@ -6,6 +14,10 @@ export interface FrontmatterField {
   type: FrontmatterFieldType;
   required?: boolean;
   default?: unknown;
+  /** Advisory length limit, shown as a counter. Schemas enforce the real one. */
+  maxLength?: number;
+  /** Sub-fields for `object`; inferred from the value's keys when omitted. */
+  fields?: FrontmatterField[];
 }
 
 export interface EditorConfig {

@@ -198,6 +198,25 @@ kbd {
 .fm-field input:focus, .fm-field textarea:focus, .fm-raw:focus { border-color: var(--accent); }
 .fm-check { flex-direction: row; align-items: center; gap: 7px; align-self: end; padding-bottom: 6px; }
 .fm-check input { width: auto; accent-color: var(--accent); }
+.fm-object {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 12px 12px; margin: 0; min-width: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px 12px;
+}
+.fm-object legend {
+  padding: 0 5px; font-size: 11px; color: var(--text-muted);
+}
+.fm-sub { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fm-sub label { font-size: 11px; color: var(--text-muted); }
+.fm-sub input {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 9px; outline: none; width: 100%;
+}
+.fm-sub input:focus { border-color: var(--accent); }
+
+.counter { float: right; font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
+.counter.is-over { color: var(--danger); }
+
 .fm-raw { margin: 0 14px 14px; width: calc(100% - 28px); font-family: var(--font-mono); font-size: 12px; }
 
 /* ---------- editor + preview ---------- */
