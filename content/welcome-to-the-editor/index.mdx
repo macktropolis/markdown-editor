@@ -1,0 +1,38 @@
+---
+title: "Welcome to the Editor"
+description: "A sample document showing markdown, frontmatter, and MDX components side by side."
+publishedAt: 2026-08-27
+tags: ["Meta", "Writing"]
+draft: true
+---
+
+import FloatImage from '../../components/FloatImage.astro';
+import glasses from './3d-glasses.png';
+
+<FloatImage
+  src={glasses}
+  alt="A pair of red-and-blue 3D glasses"
+  side="right"
+  width="35%"
+  shape="auto"
+  caption="Images live in this document's folder."
+/>
+
+This is a **sample document**. Edit it, or delete it once you have your own.
+
+## What works here
+
+- Frontmatter edited as a form above, or as raw YAML
+- Split-pane markdown with live preview
+- Drag an image onto the editor and it lands in this document's folder
+- `⌘K` inserts a component from your Astro projects
+
+Components render as placeholder blocks in preview — Astro renders them for real at build time.
+
+> Everything saves to `content/<slug>/index.mdx`.
+
+| Shortcut | Action |
+| --- | --- |
+| `⌘S` | Save now |
+| `⌘K` | Component palette |
+| `⇧⌘P` | Toggle preview |

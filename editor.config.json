@@ -1,0 +1,19 @@
+{
+  "contentRoot": "./content",
+  "defaultExtension": "mdx",
+  "componentDirs": [
+    {
+      "label": "Retrocult",
+      "path": "../retrocult-com-202608-claude/src/components"
+    }
+  ],
+  "frontmatterFields": [
+    { "key": "title",       "label": "Title",        "type": "string",  "required": true },
+    { "key": "description", "label": "Description",  "type": "text" },
+    { "key": "publishedAt", "label": "Published",    "type": "date" },
+    { "key": "tags",        "label": "Tags",         "type": "list" },
+    { "key": "image",       "label": "Cover image",  "type": "image" },
+    { "key": "draft",       "label": "Draft",        "type": "boolean", "default": true },
+    { "key": "featured",    "label": "Featured",     "type": "boolean" }
+  ]
+}

@@ -1,0 +1,4 @@
+node_modules/
+dist/
+content/.trash/
+.DS_Store
