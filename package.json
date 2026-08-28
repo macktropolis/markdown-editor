@@ -11,7 +11,8 @@
     "build": "vite build",
     "start": "npm run build && node server/index.js",
     "serve": "node server/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "vite build"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.3.4",
