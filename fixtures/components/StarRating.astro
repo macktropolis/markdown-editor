@@ -1,0 +1,33 @@
+---
+/**
+ * StarRating — a filled/empty star row for review posts.
+ *
+ * Props:
+ *   rating  — score to display, from 0 to the value of `outOf`
+ *   outOf   — total number of stars (default 5)
+ *   size    — 'sm' | 'md' | 'lg'  (default 'md')
+ *   label   — visible text after the stars, e.g. the score in words
+ */
+
+interface Props {
+  rating: number;
+  outOf?: number;
+  size?: 'sm' | 'md' | 'lg';
+  label?: string;
+}
+
+const { rating, outOf = 5, size = 'md', label } = Astro.props;
+
+const SIZES: Record<string, string> = { sm: '0.85rem', md: '1.1rem', lg: '1.5rem' };
+const stars = Array.from({ length: outOf }, (_, i) => i < Math.round(rating));
+---
+
+<p class="rating" style={`font-size: ${SIZES[size] ?? SIZES.md}`} aria-label={`${rating} out of ${outOf}`}>
+  {stars.map((filled) => <span aria-hidden="true">{filled ? '★' : '☆'}</span>)}
+  {label && <span class="rating-label">{label}</span>}
+</p>
+
+<style>
+  .rating { display: flex; align-items: center; gap: 0.1em; margin: 1rem 0; }
+  .rating-label { margin-left: 0.5em; font-size: 0.75em; opacity: 0.75; }
+</style>

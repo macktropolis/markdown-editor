@@ -1,0 +1,43 @@
+---
+/**
+ * Callout — an aside block for asides, warnings, and tips.
+ *
+ * Props:
+ *   title    — heading shown above the body; omit for an untitled block
+ *   tone     — 'note' | 'warn' | 'success'  (default 'note'; sets the accent colour
+ *              and the icon shown in the corner)
+ *   compact  — tighten the padding, for callouts inside list items
+ *
+ * Usage in .mdx:
+ *   <Callout title="Heads up" tone="warn">Body text goes here.</Callout>
+ */
+
+interface Props {
+  title?: string;
+  tone?: 'note' | 'warn' | 'success';
+  compact?: boolean;
+}
+
+const { title, tone = 'note', compact = false } = Astro.props;
+
+const TONES: Record<string, string> = {
+  note: '#7aa2f7',
+  warn: '#e0af68',
+  success: '#9ece6a',
+};
+const accent = TONES[tone] ?? TONES.note;
+---
+
+<aside
+  class="callout"
+  data-tone={tone}
+  style={`border-left: 3px solid ${accent}; padding: ${compact ? '0.5rem 0.9rem' : '1rem 1.25rem'};`}
+>
+  {title && <p class="callout-title" style={`color: ${accent}`}>{title}</p>}
+  <slot />
+</aside>
+
+<style>
+  .callout { margin: 1.5rem 0; border-radius: 8px; background: rgba(255, 255, 255, 0.03); }
+  .callout-title { margin: 0 0 0.4rem; font-weight: 600; }
+</style>

@@ -1,0 +1,29 @@
+---
+// Uses the `type Props = { ... }` form rather than an interface, and takes an
+// array prop — both are shapes the scanner has to handle.
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = {
+  // Links to lay out, in order.
+  links: { href: string; label: string }[];
+  // Columns at desktop width; collapses to one on narrow screens.
+  columns?: number;
+  heading?: string;
+} & HTMLAttributes<'div'>;
+
+const { links, columns = 2, heading } = Astro.props;
+---
+
+<div class="link-grid">
+  {heading && <h3>{heading}</h3>}
+  <ul style={`grid-template-columns: repeat(${columns}, minmax(0, 1fr));`}>
+    {links.map((link) => (
+      <li><a href={link.href}>{link.label}</a></li>
+    ))}
+  </ul>
+</div>
+
+<style>
+  .link-grid ul { display: grid; gap: 0.6rem; list-style: none; margin: 1rem 0; padding: 0; }
+  @media (max-width: 640px) { .link-grid ul { grid-template-columns: 1fr !important; } }
+</style>

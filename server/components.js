@@ -12,14 +12,67 @@ function scriptRegion(source, ext) {
   return match ? match[1] : '';
 }
 
-/** Return the text inside the braces that follow `startIndex`, respecting nesting. */
-function balancedBlock(source, startIndex) {
-  const open = source.indexOf('{', startIndex);
+/**
+ * Blank out comment bodies and string contents, preserving every offset and newline.
+ * Declarations are located against this so that prose mentioning `interface Props`,
+ * or a brace inside a string, is not mistaken for code.
+ */
+function maskNonCode(source) {
+  const out = source.split('');
+  const blank = (start, end) => {
+    for (let k = start; k < end && k < out.length; k += 1) if (out[k] !== '\n') out[k] = ' ';
+  };
+
+  let i = 0;
+  while (i < source.length) {
+    const pair = source.slice(i, i + 2);
+
+    if (pair === '//') {
+      const end = source.indexOf('\n', i);
+      const stop = end === -1 ? source.length : end;
+      blank(i, stop);
+      i = stop;
+      continue;
+    }
+
+    if (pair === '/*') {
+      const end = source.indexOf('*/', i + 2);
+      const stop = end === -1 ? source.length : end + 2;
+      blank(i, stop);
+      i = stop;
+      continue;
+    }
+
+    const quote = source[i];
+    if (quote === '"' || quote === "'" || quote === '`') {
+      let j = i + 1;
+      while (j < source.length && source[j] !== quote) {
+        if (source[j] === '\\') j += 1;
+        j += 1;
+      }
+      blank(i + 1, j);
+      i = j + 1;
+      continue;
+    }
+
+    i += 1;
+  }
+
+  return out.join('');
+}
+
+/**
+ * Return the text inside the braces that follow `startIndex`, respecting nesting.
+ * Nesting is counted against `masked` so braces in comments and strings do not
+ * unbalance the block, while the text returned comes from the real source.
+ */
+function balancedBlock(source, masked, startIndex) {
+  const open = masked.indexOf('{', startIndex);
   if (open === -1) return null;
   let depth = 0;
-  for (let i = open; i < source.length; i += 1) {
-    if (source[i] === '{') depth += 1;
-    else if (source[i] === '}') {
+  for (let i = open; i < masked.length; i += 1) {
+    if (masked[i] === '{') depth += 1;
+    else if (masked[i] === '}') {
       depth -= 1;
       if (depth === 0) return source.slice(open + 1, i);
     }
@@ -98,10 +151,10 @@ function parseDocComments(script, propNames) {
   return { docs, description };
 }
 
-function parseProps(script) {
-  const declaration = /(?:export\s+)?(?:interface\s+Props\b|type\s+Props\s*=)/.exec(script);
+function parseProps(script, masked) {
+  const declaration = /(?:export\s+)?(?:interface\s+Props\b|type\s+Props\s*=)/.exec(masked);
   if (!declaration) return [];
-  const block = balancedBlock(script, declaration.index);
+  const block = balancedBlock(script, masked, declaration.index);
   if (!block) return [];
 
   const props = [];
@@ -131,8 +184,13 @@ function parseProps(script) {
 }
 
 /** Pull defaults out of `const { a = 1, b } = Astro.props;`. */
-function parseDefaults(script) {
-  const match = /const\s*\{([\s\S]*?)\}\s*=\s*(?:Astro\.props|props)\b/.exec(script);
+function parseDefaults(script, masked) {
+  const pattern = /const\s*\{([\s\S]*?)\}\s*=\s*(?:Astro\.props|props)\b/;
+  // Located against the masked copy, then re-read from the real source at the same
+  // offsets, so string defaults like `side = 'left'` survive intact.
+  const located = pattern.exec(masked);
+  if (!located) return {};
+  const match = pattern.exec(script.slice(located.index, located.index + located[0].length));
   if (!match) return {};
   const defaults = {};
   for (const part of splitMembers(match[1].replace(/,/g, '\n'))) {
@@ -199,8 +257,9 @@ export async function listComponents() {
         continue;
       }
       const script = scriptRegion(source, file.ext);
-      const defaults = parseDefaults(script);
-      const parsed = parseProps(script);
+      const masked = maskNonCode(script);
+      const defaults = parseDefaults(script, masked);
+      const parsed = parseProps(script, masked);
       const { docs, description } = parseDocComments(script, new Set(parsed.map((prop) => prop.name)));
       const props = parsed.map((prop) => ({
         ...prop,
