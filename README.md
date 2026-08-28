@@ -43,6 +43,33 @@ the file-writing API cannot exist in a built site.
 Changing the editor's own server code requires restarting `astro dev` — Node caches the
 package's modules, and Astro's hot reload does not cover them.
 
+### Installing from git
+
+The package is not on npm. Install it from its repository, which keeps a template site
+reproducible for anyone who clones it:
+
+```bash
+npm install github:macktropolis/markdown-editor
+```
+
+The built bundle is not committed; npm runs `prepare` on git installs and builds it. Both
+repositories are private, so whoever installs the template needs access to this one too.
+
+### Working on the editor itself
+
+Point a host site at a local checkout without disturbing the pinned dependency:
+
+```bash
+npm install ../markdown-editor --no-save
+```
+
+That symlinks `node_modules/astro-content-editor` to your working copy while leaving the
+git URL in `package.json`, so edits are live and the committed template stays correct. A
+later `npm install` restores the pinned version, which is the intended way back.
+
+`npm link` does the same thing but writes to the global prefix, which needs sudo on a
+default macOS install; the command above avoids that.
+
 ### Document layouts
 
 Both shapes are supported, detected from what is already in the directory:

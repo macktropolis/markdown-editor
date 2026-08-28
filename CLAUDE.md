@@ -43,6 +43,16 @@ keystroke.
 matching Astro content collections and keeping assets with the post. Deleting moves the
 folder to `content/.trash/` — nothing is ever hard-deleted.
 
+## Host sites
+
+Installed via `github:macktropolis/markdown-editor`, so template sites stay reproducible.
+When developing the editor against a host, use `npm install ../markdown-editor --no-save`
+to symlink a working copy without changing the host's pinned dependency — do not switch
+the committed spec back to a `file:` path, which only resolves for sibling checkouts.
+
+`MackRichardson_com--astronut` is a template for new blog sites, so its committed config
+must work from a fresh clone.
+
 ## Environment-specific configuration
 
 `editor.config.json` is shared and committed. Its `componentDirs` paths are relative to
