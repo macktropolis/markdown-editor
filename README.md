@@ -43,17 +43,31 @@ the file-writing API cannot exist in a built site.
 Changing the editor's own server code requires restarting `astro dev` — Node caches the
 package's modules, and Astro's hot reload does not cover them.
 
-### Installing from git
+### Installing
 
-The package is not on npm. Install it from its repository, which keeps a template site
-reproducible for anyone who clones it:
+The editor only ever runs under `astro dev` — the integration returns early for any other
+command, because it writes files and that capability must not exist in a built site. So
+install it as a dev dependency:
 
 ```bash
-npm install github:macktropolis/markdown-editor
+npm install -D astro-content-editor            # once published to npm
+npm install -D github:macktropolis/markdown-editor   # from this repository
 ```
 
-The built bundle is not committed; npm runs `prepare` on git installs and builds it. Both
-repositories are private, so whoever installs the template needs access to this one too.
+The built bundle is not committed. npm runs `prepare` on git installs and builds it
+there; for a published tarball the bundle is built at publish time and ships inside the
+package, so consumers never build anything.
+
+Note that this repository is currently private, so whoever installs a template site from
+the git URL needs access to it too. Publishing to npm is what removes that requirement.
+
+#### Packaging
+
+Vite bundles the entire UI — React, CodeMirror, the Markdown pipeline — into
+`dist/editor`, which is why none of them are runtime dependencies. The only third-party
+module the shipped, unbundled code imports is `yaml`, in `server/`. Keep it that way:
+anything added to `dependencies` that Vite already bundles is downloaded by every
+consumer and never loaded.
 
 ### Working on the editor itself
 

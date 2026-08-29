@@ -43,6 +43,22 @@ keystroke.
 matching Astro content collections and keeping assets with the post. Deleting moves the
 folder to `content/.trash/` — nothing is ever hard-deleted.
 
+## Packaging
+
+**Only `yaml` is a runtime dependency.** Vite bundles the whole UI into `dist/editor`, so
+React, CodeMirror, and the Markdown pipeline are `devDependencies` — they are already
+inside the bundle. `server/*.js` ships unbundled and imports `yaml`; that is the one
+exception. Anything added to `dependencies` that Vite bundles is dead weight every
+consumer downloads and never loads.
+
+`prepare` must stay as it is. It is what builds `dist/editor` for git installs, which is
+how host sites consume this today; npm also runs it before packing, so a published
+tarball ships the built bundle. Replacing it with `prepublishOnly` would silently break
+every git-installed host.
+
+MIT licensed, matching the starter template it ships with. npm includes `LICENSE` in the
+tarball automatically, so it does not need a `files` entry.
+
 ## Host sites
 
 Installed via `github:macktropolis/markdown-editor`, so template sites stay reproducible.
